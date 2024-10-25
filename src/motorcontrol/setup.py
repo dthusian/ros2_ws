@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-package_name = 'jetson_pwm_rctl'
+package_name = 'motorcontrol'
 
 setup(
     name=package_name,
@@ -14,13 +14,13 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='dthusian',
-    maintainer_email='dthusian@todo.todo',
+    maintainer_email='eattofueveryday@gmail.com',
     description='TODO: Package description',
-    license='Unlicensed',
+    license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'jetson_pwm_rctl = jetson_pwm_rctl.jetson_pwm_rctl_node:main'
+            'mc = motorcontrol.mc:main'
         ],
     },
 )
