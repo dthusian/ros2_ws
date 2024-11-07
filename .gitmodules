@@ -4,3 +4,6 @@
 [submodule "src/slam_toolbox"]
 	path = src/slam_toolbox
 	url = https://github.com/SteveMacenski/slam_toolbox
+[submodule "src/ros2_laser_scan_matcher"]
+	path = src/ros2_laser_scan_matcher
+	url = https://github.com/AlexKaravaev/ros2_laser_scan_matcher
