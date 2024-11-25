@@ -20,7 +20,7 @@
       <material name="brown"/>
     </visual>
   </link>
-
+<!--
   <link name="left_wheel">
     <visual>
       <geometry>
@@ -70,4 +70,5 @@
     <child link="back_wheel"/>
     <origin xyz="-0.08 0 -0.0385"/>
   </joint>
+  -->
 </robot>
