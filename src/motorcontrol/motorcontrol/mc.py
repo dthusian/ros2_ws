@@ -61,25 +61,14 @@ def mc_read_thread():
                 ld = left_diff * M_PER_ENC_TICK
                 rd = right_diff * M_PER_ENC_TICK
                 
-                if abs(ld - rd) < 0.0001:
-                    odom_x += ld * math.sin(odom_angle)
-                    odom_y += rd * math.cos(odom_angle)
-                else:
-                    a = 0
-                    angle = 0
-                    if ld < rd:
-                        # solve ld = a * angle; rd = (d + a) * angle
-                        # rd/ld = (d + a)/a = d/a + 1
-                        a = WHEEL_DIST/(rd/ld - 1)
-                        angle = ld / a
-                    elif ld > rd:
-                        # swap ld/rd in above
-                        a = WHEEL_DIST/(ld/rd - 1)
-                        angle = rd / a
-                    odom_angle += angle
-                    r = a + WHEEL_DIST / 2
-                    odom_x += r * math.sin(angle)
-                    odom_y += r * math.cos(angle)
+                fd = (rd + ld) / 2 
+                da = (rd - ld) / WHEEL_DIST
+                dx = fd * math.cos(odom_angle)
+                dy = fd * math.sin(odom_angle)
+                
+                odom_x += dx
+                odom_y += dy
+                odom_angle += da
             except ZeroDivisionError:
                 pass # thanks python
 
