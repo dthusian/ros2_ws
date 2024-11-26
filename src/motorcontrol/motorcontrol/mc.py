@@ -8,16 +8,25 @@ import time
 import math
 import serial
 
+SPEED_LIMIT = 0.2
+SPEED_SCALE = 2.0
+DEBUG = False
+MC_CONFIG = b"C8.0,0.05,-0.1\n"
+
+log = None
+if DEBUG:
+    log = open("/tmp/log", "w")
 uart = serial.Serial("/dev/ttyACM0", 115200)
-WHEEL_DIST = 0.125
-M_PER_ENC_TICK = 0.00015339807878856412
+WHEEL_DIST = 0.129
+M_PER_ENC_TICK = math.pi * 0.07 / 1024.0 #0.00015339807878856412
 odom_x = 0.0
 odom_y = 0.0
 odom_angle = 0.0
 shutdown = False
 
 def mc_set_speed(left, right):
-    uart.write(b"C8.0,0.05,-1.0\n")
+    uart.write(b"D\n")
+    uart.write(MC_CONFIG)
     s = f"B{left:.4f},{right:.4f}\n"
     uart.write(s.encode("utf-8"))
     uart.flush()
@@ -52,14 +61,14 @@ def mc_read_thread():
             try:
                 ls, _, rs = buf[1:].partition(b",")
                 new_left_pos = int(ls)
-                new_right_pos = int(rs) * 0.00015339807878856412
+                new_right_pos = int(rs)
                 left_diff = handle_rollover(new_left_pos - left_pos)
                 right_diff = handle_rollover(new_right_pos - right_pos)
                 left_pos = new_left_pos
                 right_pos = new_right_pos
                 
                 ld = left_diff * M_PER_ENC_TICK
-                rd = right_diff * M_PER_ENC_TICK
+                rd = -right_diff * M_PER_ENC_TICK
                 
                 fd = (rd + ld) / 2 
                 da = (rd - ld) / WHEEL_DIST
@@ -71,6 +80,8 @@ def mc_read_thread():
                 odom_angle += da
             except ZeroDivisionError:
                 pass # thanks python
+        elif DEBUG:
+            log.write(buf.decode("utf-8"))
 
 class CmdVelSubscriber(Node):
     def __init__(self):
@@ -82,10 +93,10 @@ class CmdVelSubscriber(Node):
             10)
 
     def listener_callback(self, msg):
-        if True: #time.time() - last_send_time > 0.1:
-            spd = mc_compute_speed(msg)
-            mc_set_speed(max(min(spd[0], 0.15), -0.15), max(min(spd[1], 0.15), -0.15))
-            #last_send_time = time.time()
+        vl, vr = mc_compute_speed(msg)
+        vl *= SPEED_SCALE
+        vr *= SPEED_SCALE
+        mc_set_speed(max(min(vl, SPEED_LIMIT), -SPEED_LIMIT), max(min(vr, SPEED_LIMIT), -SPEED_LIMIT))
 
 class OdomPublisher(Node):
     def __init__(self):
