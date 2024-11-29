@@ -2,4 +2,4 @@
 
 set -e
 
-sudo apt install ros-humble-rviz2
+sudo apt install python3-colcon-common-extensions ros-humble-rviz2

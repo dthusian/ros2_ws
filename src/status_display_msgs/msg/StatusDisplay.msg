@@ -1,0 +1,6 @@
+float64 left_setpoint
+float64 left_velocity
+float64 left_output
+float64 right_setpoint
+float64 right_velocity
+float64 right_output

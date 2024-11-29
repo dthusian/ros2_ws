@@ -5,9 +5,10 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
 import os
 
-def _launch_other(package, launch):
+def _launch_other(package, launch, args=None):
     return IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory(package), "launch"), "/" + launch])
+        PythonLaunchDescriptionSource([os.path.join(get_package_share_directory(package), "launch"), "/" + launch]),
+        launch_arguments=args
     )
 
 def generate_launch_description():
@@ -17,7 +18,10 @@ def generate_launch_description():
     )
     nav2 = _launch_other(
         package="nav2_bringup",
-        launch="navigation_launch.py"
+        launch="navigation_launch.py",
+        args=[
+            ("use_sim_time", "false")
+        ]
     )
     sllidar = _launch_other(
         package="sllidar_ros2",

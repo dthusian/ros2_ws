@@ -7,15 +7,14 @@ from threading import Thread
 import time
 import math
 import serial
+from status_display_msgs.msg import StatusDisplay
 
 SPEED_LIMIT = 0.2
-SPEED_SCALE = 2.0
-DEBUG = False
-MC_CONFIG = b"C8.0,0.05,-0.1\n"
+SPEED_SCALE = 0.5
+MC_CONFIG = b"C100.0,0.1,5.0\n"
+#MC_CONFIG = b"Cl500.0,0.1,-10.0\nCr1000.0,0.1,-10.0\n"
+#MC_CONFIG = b"C8.0,0.05,-0.1\n"
 
-log = None
-if DEBUG:
-    log = open("/tmp/log", "w")
 uart = serial.Serial("/dev/ttyACM0", 115200)
 WHEEL_DIST = 0.129
 M_PER_ENC_TICK = math.pi * 0.07 / 1024.0 #0.00015339807878856412
@@ -23,6 +22,7 @@ odom_x = 0.0
 odom_y = 0.0
 odom_angle = 0.0
 shutdown = False
+status = StatusDisplay()
 
 def mc_set_speed(left, right):
     uart.write(b"D\n")
@@ -80,8 +80,22 @@ def mc_read_thread():
                 odom_angle += da
             except ZeroDivisionError:
                 pass # thanks python
-        elif DEBUG:
-            log.write(buf.decode("utf-8"))
+        elif cmd == b"D":
+            mc_name = buf[1:2]
+            def extract_field(name):
+                pos = buf.find(name)
+                return buf[pos+1:buf.find(b"\t", pos)].decode("utf-8")
+            setpoint = float(extract_field(b"S"))
+            velocity = float(extract_field(b"V"))
+            output = float(extract_field(b"O"))
+            if mc_name == b"l":
+                status.left_setpoint = setpoint
+                status.left_velocity = velocity
+                status.left_output = output
+            elif mc_name == b"r":
+                status.right_setpoint = setpoint
+                status.right_velocity = velocity
+                status.right_output = output
 
 class CmdVelSubscriber(Node):
     def __init__(self):
@@ -124,26 +138,35 @@ class OdomPublisher(Node):
 
         self.tf_broadcaster.sendTransform(t)
 
+class StatusPublisher(Node):
+    def __init__(self):
+        super().__init__("mc_publish_status")
+        self.publisher_ = self.create_publisher(StatusDisplay, "/amr_status", 10)
+        self.timer = self.create_timer(0.05, self.timer_callback)
+    
+    def timer_callback(self):
+        self.publisher_.publish(status)
+
 def main(args=None):
     global shutdown, odom_x, odom_y, odom_angle
     
     rclpy.init(args=args)
     
-    mc_stop_motors()
-    time.sleep(1)
     mc_reader = Thread(target=mc_read_thread)
     mc_reader.start()
-    time.sleep(1)
-    odom_x = 0
-    odom_y = 0
-    odom_angle = 0
+    time.sleep(0.2)
+    odom_x = 0.0
+    odom_y = 0.0
+    odom_angle = 0.0
 
     cmd_vel_subscriber = CmdVelSubscriber()
     odom_publisher = OdomPublisher()
+    status_publisher = StatusPublisher()
 
     executor = rclpy.executors.MultiThreadedExecutor()
     executor.add_node(cmd_vel_subscriber)
     executor.add_node(odom_publisher)
+    executor.add_node(status_publisher)
 
     try:
         executor.spin()
