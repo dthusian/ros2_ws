@@ -9,9 +9,9 @@ import math
 import serial
 from status_display_msgs.msg import StatusDisplay
 
-SPEED_LIMIT = 0.2
-SPEED_SCALE = 0.5
-MC_CONFIG = b"C100.0,0.1,5.0\n"
+SPEED_LIMIT = 0.25
+SPEED_SCALE = 0.8
+MC_CONFIG = b"100.0,0.0,1.0"
 #MC_CONFIG = b"Cl500.0,0.1,-10.0\nCr1000.0,0.1,-10.0\n"
 #MC_CONFIG = b"C8.0,0.05,-0.1\n"
 
@@ -24,16 +24,20 @@ odom_angle = 0.0
 shutdown = False
 status = StatusDisplay()
 
-def mc_set_speed(left, right):
-    uart.write(b"D\n")
+def mc_init():
+    uart.write(b"D\n\n")
+    uart.flush()
+    uart.write(b"C")
     uart.write(MC_CONFIG)
+    uart.write(b"\n\n")
+    uart.flush()
+
+def mc_set_speed(left, right):
+    mc_init()
     s = f"B{left:.4f},{right:.4f}\n"
     uart.write(s.encode("utf-8"))
     uart.flush()
     return s
-
-def mc_stop_motors():
-    mc_set_speed(0.0, 0.0)
 
 def mc_compute_speed(msg):
     angle = msg.angular.z
@@ -54,6 +58,8 @@ def mc_read_thread():
     right_pos = 0
     while uart.read() != b"\n":
         pass
+    mc_init()
+    mc_set_speed(0.0, 0.0)
     while not shutdown:
         buf = uart.readline()
         cmd = buf[0:1]
@@ -117,6 +123,8 @@ class OdomPublisher(Node):
         super().__init__("mc_publish_odom")
         self.tf_broadcaster = TransformBroadcaster(self)
         self.timer = self.create_timer(0.1, self.broadcast_timer_callback)
+        global logger
+        logger = self.get_logger()
     
     def broadcast_timer_callback(self):
         t = TransformStamped()
@@ -174,11 +182,9 @@ def main(args=None):
         pass
     
     shutdown = True
-    mc_stop_motors()
-    mc_stop_motors()
     cmd_vel_subscriber.destroy_node()
     odom_publisher.destroy_node()
-    rclpy.shutdown()
+    status_publisher.destroy_node()
 
 if __name__ == '__main__':
     main()
